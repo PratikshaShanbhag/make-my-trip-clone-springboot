@@ -5,7 +5,7 @@ FROM maven:3.9.5-eclipse-temurin-17 AS build
 WORKDIR /app
 
 # Copy the project files
-COPY . .
+COPY src src
 
 # Build the project without running tests
 RUN mvn clean package -DskipTests
