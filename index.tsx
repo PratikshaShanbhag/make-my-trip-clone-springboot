@@ -1,516 +1,458 @@
-"use client";
+import { cancelbooking, editprofile, getuserbookings } from "@/api";
+import { clearUser, setUser } from "@/store";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import FlightList from "@/components/Flights/Flightlist";
-import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useState } from "react";
-import {
-  addflight,
-  addhotel,
-  editflight,
-  edithotel,
-  getuserbyemail,
-} from "@/api";
-import HotelList from "@/components/Hotel/Hotel";
+  Building2,
+  Calendar,
+  Check,
+  CreditCard,
+  Edit2,
+  LogOut,
+  Mail,
+  MapPin,
+  Phone,
+  Plane,
+  User,
+  X,
+} from "lucide-react";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import axios from "axios"; // For making API requests
 
-const mockFlights = [
-  {
-    _id: "1",
-    flightName: "AirOne 101",
-    from: "New York",
-    to: "London",
-    departureTime: "2023-07-01T08:00",
-    arrivalTime: "2023-07-01T20:00",
-    price: 500,
-    availableSeats: 150,
-  },
-  {
-    _id: "2",
-    flightName: "SkyHigh 202",
-    from: "Paris",
-    to: "Tokyo",
-    departureTime: "2023-07-02T10:00",
-    arrivalTime: "2023-07-03T06:00",
-    price: 800,
-    availableSeats: 200,
-  },
-  {
-    _id: "3",
-    flightName: "EagleWings 303",
-    from: "Los Angeles",
-    to: "Sydney",
-    departureTime: "2023-07-03T22:00",
-    arrivalTime: "2023-07-05T06:00",
-    price: 1200,
-    availableSeats: 180,
-  },
-];
+const index = () => {
+  const [open, setopem] = useState(false);
+  const dispatch = useDispatch();
+  const user = useSelector((state: any) => state.user.user);
+  const router = useRouter();
+  const [bookings, setBookings] = useState([]);
+  const [cancelReason, setCancellationreason] = useState("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [cancellationCode, setCancellationCode] = useState("");
+  const [type, setbookingtype] = useState("");
+  const [bookingstatus, setbookingstatus] = useState("");
 
-const mockHotels = [
-  {
-    _id: "1",
-    hotelName: "Luxury Palace",
-    location: "Paris, France",
-    pricePerNight: 300,
-    availableRooms: 50,
-    amenities: "Wi-Fi, Pool, Spa, Restaurant",
-  },
-  {
-    _id: "2",
-    hotelName: "Seaside Resort",
-    location: "Bali, Indonesia",
-    pricePerNight: 200,
-    availableRooms: 100,
-    amenities: "Beach Access, Wi-Fi, Restaurant, Water Sports",
-  },
-  {
-    _id: "3",
-    hotelName: "Mountain Lodge",
-    location: "Aspen, Colorado",
-    pricePerNight: 250,
-    availableRooms: 30,
-    amenities: "Ski-in/Ski-out, Fireplace, Hot Tub, Restaurant",
-  },
-];
-
-//export default index;
-
-interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  phoneNumber: string;
-}
-function UserSearch() {
-  const [email, setemail] = useState("");
-  const [user, setuser] = useState<User | null>(null);
-  const handlesearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = await getuserbyemail(email);
-    const sampleuser: User = data;
-    /*any = {
-      _id: "1",
-      firstName: "John",
-      lastName: "Doe",
-      email: email,
-      role: "USER",
-      phoneNumber: "1234567890",
-    };*/
-    setuser(sampleuser);
+  const logout = () => {
+    dispatch(clearUser());
   };
-
-  return (
-    <div>
-      <form onSubmit={handlesearch}>
-        <div>
-          <Label>Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="search user by email"
-            value={email}
-            onChange={(e) => setemail(e.target.value)}
-            required
-          />
-        </div>
-        <Button type="submit">Search</Button>
-      </form>
-      {user && (
-        <div>
-          <h3>User Details </h3>
-          <p>
-            <strong>Name:</strong>
-            {user.firstName}
-            {user.lastName}
-          </p>
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-          <p>
-            <strong>Role:</strong> {user.role}
-          </p>
-          <p>
-            <strong>Phone:</strong> {user.phoneNumber}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface Hotel {
-  id?: string;
-  hotelName: string;
-  location: string;
-  pricePerNight: number;
-  availableRooms: number;
-  amenities: string;
-}
-
-function AddEditHotel({ hotel }: { hotel: Hotel | null }) {
-  const [formData, setFormData] = useState<Hotel>({
-    hotelName: "",
-    location: "",
-    pricePerNight: 0,
-    availableRooms: 0,
-    amenities: "",
+  const [isEditing, setIsEditing] = useState(false);
+  const [userData, setuserdata] = useState({
+    firstName: user?.firstName ? user.firstName : "",
+    lastName: user?.lastName ? user.lastName : "",
+    email: user?.email ? user.email : "",
+    phoneNumber: user?.phoneNumber ? user.phoneNumber : "",
+    bookings: [
+      {
+        type: "Flight",
+        bookingId: "F123456",
+        date: "2024-03-25",
+        quantity: 2,
+        totalPrice: 12499,
+        details: {
+          from: "Delhi",
+          to: "Mumbai",
+          airline: "IndiGo",
+        },
+      },
+      {
+        type: "Hotel",
+        bookingId: "H789012",
+        date: "2024-04-15",
+        quantity: 1,
+        totalPrice: 8999,
+        details: {
+          name: "Taj Palace",
+          location: "Goa",
+          nights: 3,
+        },
+      },
+    ],
   });
 
-  useEffect(() => {
-    if (hotel) {
-      setFormData(hotel);
-    } else {
-      setFormData({
-        hotelName: "",
-        location: "",
-        pricePerNight: 0,
-        availableRooms: 0,
-        amenities: "",
-      });
-    }
-  }, [hotel]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    //Here you would typically send this data to your backend
-    //console.log("Submitting hotel data:", formData);
-    //reset form after submission if its a new hotel
-    if (hotel) {
-      await edithotel(
-        hotel.id,
-        formData.hotelName,
-        formData.location,
-        formData.pricePerNight,
-        formData.availableRooms,
-        formData.amenities
+  const [editForm, setEditForm] = useState({ ...userData });
+  const handleSave = async () => {
+    try {
+      const data = await editprofile(
+        user?.id,
+        userData.firstName,
+        userData.lastName,
+        userData.email,
+        userData.phoneNumber
       );
-      return;
-    }
-    await addhotel(
-      formData.hotelName,
-      formData.location,
-      formData.pricePerNight,
-      formData.availableRooms,
-      formData.amenities
-    );
-    if (!hotel) {
-      setFormData({
-        hotelName: "",
-        location: "",
-        pricePerNight: 0,
-        availableRooms: 0,
-        amenities: "",
-      });
+      dispatch(setUser(data));
+      setIsEditing(false);
+    } catch (error) {
+      setuserdata(editForm);
+      setIsEditing(false);
     }
   };
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-In", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="text-lg font-semibold mb-2">
-        {hotel ? "Edit Hotel" : "Add New Hotel"}
-      </h3>
-      <div>
-        <Label htmlFor="hotelName">Hotel Name</Label>
-        <Input
-          id="hotelName"
-          name="hotelName"
-          value={formData.hotelName}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="location">Location</Label>
-        <Input
-          id="location"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="pricePerNight">Price Per Night</Label>
-        <Input
-          id="pricePerNight"
-          name="pricePerNight"
-          type="number"
-          value={formData.pricePerNight}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="availableRooms">Available Rooms</Label>
-        <Input
-          id="availableRooms"
-          name="availableRooms"
-          type="number"
-          value={formData.availableRooms}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="amenities">Amenities</Label>
-        <Textarea
-          id="amenities"
-          name="amenities"
-          value={formData.amenities}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <Button type="submit">{hotel ? "Update Hotel" : "Add Hotel"}</Button>
-    </form>
-  );
-}
+  const handleEditFormChange = (field: any, value: any) => {
+    setuserdata((prevState) => ({
+      ...prevState,
+      [field]: value, // Update the specific field dynamically
+    }));
+  };
 
-interface Flight {
-  id?: string;
-  flightName: string;
-  from: string;
-  to: string;
-  departureTime: string;
-  arrivalTime: string;
-  price: number;
-  availableSeats: number;
-}
-function Addeditflight({ flight }: { flight: Flight | null }) {
-  const [formData, setFormData] = useState<Flight>({
-    flightName: "",
-    from: "",
-    to: "",
-    departureTime: "",
-    arrivalTime: "",
-    price: 0,
-    availableSeats: 0,
-  });
+  //const userId = user?._id;
+
+  //console.log("Parsed userId =", userId);
+
+  // Fetch bookings on component mount
+
+  const [userId, setUserId] = useState(null);
+
   useEffect(() => {
-    if (flight) {
-      setFormData(flight);
-    } else {
-      setFormData({
-        flightName: "",
-        from: "",
-        to: "",
-        departureTime: "",
-        arrivalTime: "",
-        price: 0,
-        availableSeats: 0,
-      });
-    }
-  }, [flight]);
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    //Here you would typically send this data to your backend
-    console.log("Submitting flight data:", formData);
-    //reset form after submission if its a new flight
-    if (flight) {
-      await editflight(
-        flight?.id,
-        formData.flightName,
-        formData.from,
-        formData.to,
-        formData.departureTime,
-        formData.arrivalTime,
-        formData.price,
-        formData.availableSeats
-      );
-      return;
-    }
-    await addflight(
-      formData.flightName,
-      formData.from,
-      formData.to,
-      formData.departureTime,
-      formData.arrivalTime,
-      formData.price,
-      formData.availableSeats
-    );
-    if (!flight) {
-      setFormData({
-        flightName: "",
-        from: "",
-        to: "",
-        departureTime: "",
-        arrivalTime: "",
-        price: 0,
-        availableSeats: 0,
-      });
-    }
-  };
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="text-lg font-semibold mb-2">
-        {flight ? "Edit Flight" : "Add new flight"}
-      </h3>
-      <div>
-        <Label htmlFor="flightName">Flight Name</Label>
-        <Input
-          id="flightName"
-          name="flightName"
-          value={formData.flightName}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="from">From</Label>
-        <Input
-          id="from"
-          name="from"
-          value={formData.from}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="to">To</Label>
-        <Input
-          id="to"
-          name="to"
-          value={formData.to}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="departureTime">Departure Time</Label>
-        <Input
-          id="departureTime"
-          name="departureTime"
-          type="datetime-local"
-          value={formData.departureTime}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="arrivalTime">Arrival Time</Label>
-        <Input
-          id="arrivalTime"
-          name="arrivalTime"
-          type="datetime-local"
-          value={formData.arrivalTime}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="price">Price</Label>
-        <Input
-          id="price"
-          name="price"
-          type="number"
-          value={formData.price}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="availableSeats">Available Seats</Label>
-        <Input
-          id="availableSeats"
-          name="availableSeats"
-          type="number"
-          value={formData.availableSeats}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <Button type="submit">{flight ? "Update Flight" : "Add Flight"}</Button>
-    </form>
-  );
-}
+    const storedUser = localStorage.getItem(user);
+    console.log("User from localStorage =", storedUser);
 
-export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("flights");
-  const [selectedFlight, setSelectedFlight] = useState(null);
-  const [selectedHotel, setSelectedHotel] = useState(null);
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      console.log("Parsed userId =", parsed._id);
+      setUserId(parsed._id);
+    }
+  }, []);
+
+  const fetchBookings = async () => {
+    if (!userId) return; // FIXED: this is the correct check
+    try {
+      console.log("Fetching bookings for userId =", userId);
+      const response = await getuserbookings(userId);
+      // const filtereddata = response.filter((booking: any) => booking.id === booking?.bookingId)
+      setBookings(response);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    }
+  };
+
+  // Run this only when userId is available
+  useEffect(() => {
+    fetchBookings();
+  }, [userId]);
+  //const id=user?.bookingId;
+  const handleCancelClick = (bookingId: any) => {
+    setSelectedBookingId(bookingId);
+    setShowCancelModal(true);
+    setbookingstatus("PENDING");
+  };
+
+  const handleConfirmCancellation = async () => {
+    try {
+      const response = await cancelbooking(
+        user?.id,
+        selectedBookingId,
+        type,
+        cancelReason
+      );
+      // Replace with your actual cancellation API endpoint and data
+      // await axios.post('/bookings/cancel', {
+      //    bookingId: selectedBookingId,
+      //  cancellationCode: cancellationCode, // If required
+      // });
+      // Update UI by removing the cancelled booking
+
+      setBookings(
+        bookings.filter((b: any) => b.bookingId !== selectedBookingId)
+      );
+      setShowCancelModal(false);
+      setbookingstatus("CANCELLED");
+      alert("Booking cancelled successfully!");
+
+      fetchBookings();
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      alert("Error cancelling booking. Please try again.");
+    }
+  };
+
   return (
-    <div className="container mx-auto p-4 bg-white max-w-full">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 ">
-          <TabsTrigger value="flights">Flights</TabsTrigger>
-          <TabsTrigger value="hotels">Hotels</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-        </TabsList>
-        <TabsContent value="flights">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Flights</CardTitle>
-              <CardDescription>
-                Add, edit or remove flights from the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <FlightList onSelect={setSelectedFlight} />
-                <Addeditflight flight={selectedFlight} />
+    <div className="min-h-screen bg-gray-50 pt-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Profile Section */}
+          <div className="md:col-span-1">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold">Profile</h2>
+                {!isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-red-600 flex items-center space-x-1 hover:text-red-700"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Edit</span>
+                  </button>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="hotels">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Hotels</CardTitle>
-              <CardDescription>
-                Add, edit, or remove hotels from the system.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <HotelList onSelect={setSelectedHotel} />
-                <AddEditHotel hotel={selectedHotel} />
+
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={userData.firstName}
+                      onChange={(e) =>
+                        handleEditFormChange("firstName", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={userData.lastName}
+                      onChange={(e) =>
+                        handleEditFormChange("lastName", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={userData.email}
+                      onChange={(e) =>
+                        handleEditFormChange("email", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={userData.phoneNumber}
+                      onChange={(e) =>
+                        handleEditFormChange("phoneNumber", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleSave}
+                      className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Save</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditForm({ ...user });
+                      }}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="font-medium">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      {/* <p className="text-sm text-gray-500">{userData.role}</p> */}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-gray-500" />
+                    <p>{user?.email}</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Phone className="w-5 h-5 text-gray-500" />
+                    <p>{user?.phoneNumber}</p>
+                  </div>
+                  <button
+                    className="w-full mt-4 flex items-center justify-center space-x-2 text-red-600 hover:text-red-700"
+                    onClick={logout}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bookings Section */}
+          <div className="md:col-span-2">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold mb-6">My Bookings</h2>
+              <div className="space-y-6">
+                {!Array.isArray(bookings) || user?.bookings?.length === 0 ? (
+                  <p>No bookings found.</p>
+                ) : (
+                  user?.bookings.map((booking: any, index: any) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          {booking?.type === "Flight" ? (
+                            <div className="bg-blue-100 p-2 rounded-lg">
+                              <Plane className="w-6 h-6 text-blue-600" />
+                            </div>
+                          ) : (
+                            <div className="bg-green-100 p-2 rounded-lg">
+                              <Building2 className="w-6 h-6 text-green-600" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold">{booking?.type}</h3>
+                            <p className="text-sm text-gray-500">
+                              Booking ID: {booking?.bookingId}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">
+                            ₹ {booking?.totalPrice.toLocaleString("en-IN")}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {booking?.type}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{formatDate(booking?.date)}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="w-4 h-4" />
+                          <span>{booking?.type}</span>
+                          <CreditCard className="w-4 h-4" />
+                          <span>Paid</span>
+                        </div>
+
+                        <div>
+                          <label>Booking Status:</label>
+                          <select
+                            name="bookingstatus"
+                            id="bookingstatus"
+                            onChange={(e) => setbookingstatus(e.target.value)}
+                          >
+                            <option value={booking?.status}>CONFIRMED</option>
+                            <option value={booking?.status}>PENDING</option>
+                            <option value={booking?.status}>CANCELLED</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <Button
+                          className="w-half bg-red-700 text-white"
+                          style={{ width: "40%" }}
+                          type="button"
+                          onClick={() => handleCancelClick(booking.bookingId)}
+                        >
+                          Cancel Booking
+                        </Button>
+                        <div>
+                          {showCancelModal && (
+                            <div className="modal">
+                              <h3>Confirm Cancellation</h3>
+                              <p>
+                                Are you sure you want to cancel this booking?
+                              </p>
+                              {/* Optional: Add input for cancellation code */}
+
+                              <input
+                                type="text"
+                                placeholder="Enter your booking Id"
+                                value={cancellationCode}
+                                onChange={(e) =>
+                                  setCancellationCode(e.target.value)
+                                }
+                              />
+                              <div>
+                                <input
+                                  type="text"
+                                  placeholder="Enter your booking type"
+                                  value={type}
+                                  onChange={(e) =>
+                                    setbookingtype(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="text"
+                                  placeholder="Enter cancellation reason"
+                                  value={cancelReason}
+                                  onChange={(e) =>
+                                    setCancellationreason(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <button
+                                  className="w-full bg-red-500 text-white"
+                                  style={{ width: "30%" }}
+                                  onClick={handleConfirmCancellation}
+                                >
+                                  Confirm
+                                </button>
+                              </div>
+                              <div>
+                                <button
+                                  className="w-full bg-red-500 text-white"
+                                  style={{ width: "30%" }}
+                                  onClick={() => setShowCancelModal(false)}
+                                >
+                                  Close
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <ul>
+                          <li key={booking.bookingId}>
+                            <div className="text-right">
+                              <p className="w-full mt-4 flex items-center justify-center space-x-2 text-red-600 hover:text-red-700">
+                                CancellationDate:{booking?.cancelledAt}
+                              </p>
+                            </div>
+                          </li>
+                        </ul>{" "}
+                      </div>{" "}
+                    </div>
+                  ))
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Search users by email</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UserSearch />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+//<div>index</div>;
+//};
+export default index;
