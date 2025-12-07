@@ -10,9 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
+
+
 public class BookingService {
     @Autowired
     private UserRepository userRepository;
@@ -23,7 +26,9 @@ public class BookingService {
     @Autowired
     private HotelRepository hotelRepository;
 
-    public Booking bookFlight(String userId, String flightId, int seats, double price){
+
+
+        public Booking bookFlight(String userId, String flightId, int seats, double price){
         Optional<Users> usersOptional=userRepository.findById(userId);
         Optional<Flight> flightOptional=flightRepository.findById(flightId);
         if(usersOptional.isPresent() && flightOptional.isPresent()){
@@ -71,4 +76,30 @@ public class BookingService {
             }}
         throw new RuntimeException("User or Hotel not Found");
     };
+
+
+    public Booking cancelBooking(String userId,String bookingId, String type, String reason) {
+
+        // Fetch user
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        // Find booking inside user's bookings list
+        Users.Booking booking = user.getBookings().stream()
+                .filter(b -> b.getBookingId().toString().equals(bookingId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+
+        // Update booking details
+        booking.setStatus(Users.Booking.BookingStatus.CANCELLED);
+        booking.setCancelReason(reason);
+        booking.setType(type);
+        booking.setCancelledAt(LocalDateTime.now().toString());
+
+        // Save user (not booking!)
+        userRepository.save(user);
+
+        return booking;
+    }
+
 }

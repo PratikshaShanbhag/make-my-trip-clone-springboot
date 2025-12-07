@@ -1,10 +1,10 @@
 package com.makemytrip.makemytrip.models;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.util.ArrayList;
 import java.util.List;
 @Document(collection = "users")
+
 public class Users {
     @Id
     private String _id;
@@ -60,13 +60,38 @@ public class Users {
     }
 public List<Booking> getBookings(){return bookings;}
     public void setBookings(List<Booking> bookings){this.bookings=bookings;}
-
+   // @Entity
 public static class Booking{
     private String type;
     private String bookingId;
     private String date;
     private int quantity;
     private double totalPrice;
+        //@Enumerated(EnumType.String)
+        private BookingStatus status; // e.g., CONFIRMED, CANCELLED
+        private String cancelReason;
+        private String cancelledAt;
+
+       public void setCancelReason(String cancelReason) {
+           this.cancelReason=cancelReason;
+       }
+       public String getCancelReason(){return cancelReason;}
+
+
+       // Example CancellationRequest DTO
+        //public class CancellationRequest {
+            //private String reason;
+            // Getters and setters
+           //public String getReason(){return reason;}
+           // public void setReason(String reason) {
+           // this.reason=reason;}
+        //}
+
+        // Example BookingStatus Enum
+        public enum BookingStatus {
+            CONFIRMED, CANCELLED, PENDING
+        }
+
 //Getters and Setters
     public String getType(){return type;}
     public void setType(String type){this.type=type;}
@@ -90,5 +115,21 @@ public static class Booking{
     public void setTotalPrice(double totalPrice) {
         this.totalPrice = totalPrice;
     }
-}
+
+        public BookingStatus getStatus() {
+            return status;
+        }
+
+        public void setStatus(BookingStatus status) {
+            this.status = status;
+        }
+
+        public String getCancelledAt() {
+            return cancelledAt;
+        }
+
+        public void setCancelledAt(String cancelledAt) {
+            this.cancelledAt = cancelledAt;
+        }
+    }
 }

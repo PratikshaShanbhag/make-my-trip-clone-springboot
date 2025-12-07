@@ -9,6 +9,7 @@ import com.makemytrip.makemytrip.models.Hotel;
 import com.makemytrip.makemytrip.repositories.UserRepository;
 import com.makemytrip.makemytrip.repositories.FlightRepository;
 import com.makemytrip.makemytrip.repositories.HotelRepository;
+
 import java.util.List;
 import java.util.Optional;
 @RestController
@@ -23,6 +24,8 @@ public class AdminController {
 
     @Autowired
     private FlightRepository flightRepository;
+
+
 
     @GetMapping("/users")
     public ResponseEntity<List<Users>> getallusers(){
